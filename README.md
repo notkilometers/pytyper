@@ -10,3 +10,5 @@ Tkinter, Pynput, Traceback, Time, OS, Keyboard
 4. Click the "Find Location" button, and left click in desired location to paste message<br>
 5. Click "Save", and then "Refresh" upon returning to the main window.<br>
 6. Left click on the new button(s) to use them :)<br>
+
+<h5> Note: .exe is located in /dist directory </h5>
