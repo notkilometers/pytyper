@@ -1,157 +1,94 @@
-# initializing
-import tkinter as tk 
-from pynput.mouse import Button, Controller, Listener 
-from ast import literal_eval as make_tuple
-import keyboard
-import traceback
-import time
-import os
+from pynput.mouse import Button, Listener, Controller
+from keyboard import write
+import tkinter as tk
 import pickle
 
-path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', 'pytyper.txt')
-fpath = path
+macros = [] # init global "macros" & set mouse to controller from pynput
 mouse = Controller()
-global list
-list = []
 
-# class for holding info
-class inf:
-    def __init__(self, loca, lab, tex):
-        self.loca = loca
-        self.lab = lab
-        self.tex = tex
+def executeMacro(macro): # moves mouse to location, clicks, types words
+    mouse.position = macro.location
+    mouse.press(Button.left)
+    mouse.release(Button.left)
+    write(macro.text)
 
-    @classmethod
-    def fromArray(cls, arr):
-        return cls(arr[0], arr[1], arr[2])
+def addButton(frame, macro): # packs button to frame with label
+    frame.newButton = tk.Button(frame, text=macro.label, command=lambda: executeMacro(macro))
+    frame.newButton.pack()
+
+def loadMacros():
+    return pickle.load(open("macros.p", "rb"))
+
+def saveMacros():
+    pickle.dump(macros, open("macros.p", "wb"))
     
-def pickles_out(): # file upload
-    with open(fpath, "w+") as f:
-        for obj in list:
-            h1 = obj.loca
-            h2 = obj.lab
-            h3 = obj.tex
-            print("WRITING:", h1, h2, h3)
-            f.write(str(h1) + os.linesep)
-            f.write(str(h2) + os.linesep)
-            f.write(str(h3) + os.linesep)
-            
-def pickles_in(self): # file download
-    h = {}
-    k = 0
-    global list
-    list = []
 
-    with open(fpath, "r+") as f:
-        for line in f:
-            data = line.strip()
-            if not data: continue
-            if k == 0:
-                h[k] = make_tuple(data)
-            elif k == 2:
-                h[k] = line
-            else:
-                h[k] = data
+def getMousePosition(self):
+    self.location = mouse.position
+    return False # returns false for to flag that button click is complete to grab location in calling function
 
-            k = (k + 1) % 3
+def getMousePositionWrapper(self): # wrapper function for getting mouse position
+    with Listener(on_click = lambda x, y, button, pressed: getMousePosition(self)) as listener: # the lambda needs 4 args that never get used, blame pynput
+        listener.join()
+    
+    
+def saveFields(self): # save fields to list, save list, destroy window
+    newMacro = macro(self.location, self.textBox1.get("1.0","end-1c"), self.textBox2.get("1.0","end-1c")) # append to list
+    macros.append(newMacro)
+    addButton(self.parent, newMacro)
+    saveMacros() # saves to pickle
+    self.master.destroy() # close window
 
-            if k == 0:
-                list.append(inf.fromArray(h))
-                h = {}
+class macro():
+    def __init__(self, location, label, text):
+        self.location = location
+        self.label = label
+        self.text = text
 
-# class for main window
-class mainW(tk.Frame):
-    def __init__(self, master=None):
+# class for window to add buttons
+class addGUI(tk.Frame):
+    
+    def __init__(self, master=None, parent=None):
+        self.super = tk.Frame
         super().__init__(master)
-        self.butA = {}
- 
         self.master = master
-        self.master.title = ("PyTyper")
+        self.parent = parent
 
-        def outpAdv(obj): # output function
-            mouse.position = obj.loca
-            mouse.press(Button.left)
-            mouse.release(Button.left)
-            keyboard.write(obj.tex)
-
-        def wrapCB(fn, params): # button func
-            return lambda: fn(*params)
-
-        def listtopage(self, list): # adds new buttons to page
-            for i, obj in enumerate(list):
-                self.butA[i] = tk.Button(self, text=obj.lab, command=wrapCB(outpAdv, [obj]))
-                self.butA[i].pack()
-            list.clear()
-
-        def delButtons(self):
-            for i in self.butA:
-                self.butA[i].destroy()
-            self.butA = {}
-    
-        def refr(): # refresh & add buttons
-            delButtons(self)
-            pickles_in(self)
-            listtopage(self, list)
-
-        self.refresh = tk.Button(self, text="Refresh", command=refr)
-        self.refresh.pack()
-
-        def addsw(): # add new button
-            new = tk.Tk()
-            appB = addB(new)
-            appB.pack()
+        # text box vars so I can grab the contents later
+        self.textBox1 = tk.Text(self,height=1, width=10)
+        self.textBox2 = tk.Text(self, height=2, width=10)
         
-        self.button = tk.Button(self, text=" + ", command= addsw)
-        self.button.pack()
-
-# class for adding new buttons
-class addB( tk.Frame):
-    def __init__(self, master=None):
-        self.butA = {}   
-        def getinf(): # get info
-            t0 = t
-            t1=self.t1.get("1.0","end-1c")
-            t2=self.t2.get("1.0","end-1c")
-            pickles_in(self)
-            list.append( inf(t0, t1, t2))
-            pickles_out()
-            list.clear()
-            self.master.destroy()
-
-        super().__init__(master)
-
-        self.master = master
-        self.master.title = ("Add New Button")
-
-        self.l1 = tk.Label(self, text="Enter Desired Label:")
-        self.l1.pack()
-        self.t1 = tk.Text(self,height=1, width=10)
-        self.t1.pack()
-        self.l2 = tk.Label(self, text="Enter Desired Text:")
-        self.l2.pack()
-        self.t2 = tk.Text(self, height=2, width=10)
-        self.t2.pack()
-
-        def on_click(x, y, button, pressed): # grab locaiton when mouse is clicked
-            global t
-            t = mouse.position
-            print(t)
-            return False
-
-        def start_mList(): # mouse listener
-            with Listener(on_click=on_click) as mList:
-                mList.join()
+        # all of the labels, text boxes, buttons
+        fields = [tk.Label(self, text="Enter Desired Label:"), self.textBox1, tk.Label(self, text="Enter Desired Text:"), self.textBox2, tk.Button(self, text="Get Location", command=lambda : getMousePositionWrapper(self)), tk.Button(self, text="Save", command=lambda : saveFields(self))]
     
-        def loc(): # starter function
-            start_mList()
-            
-        self.b1 = tk.Button(self, text="Get Location", command=loc)
-        self.b1.pack()
-        self.b2 = tk.Button(self, text="Save", command=getinf)
-        self.b2.pack()
+        # packs buttons onto gui
+        for i in fields:
+            i.pack()
 
-root = tk.Tk()
-root.resizable()
-app = mainW(root)
-app.pack(fill='both', expand=True)
-root.mainloop()
+# class for window housing the actual macro buttons
+class macroGUI(tk.Frame):
+    def __init__(self, master=None):
+        super().__init__(master)
+        self.master = master
+
+        # caller for gui to add macros
+        def callAdd():
+            frame = tk.Tk()
+            appAdd = addGUI(frame, self)
+            appAdd.pack()
+        
+        button = tk.Button(self, text=" + ", command=callAdd)
+        button.pack()
+
+        # add pre-existing macros from pickle
+        macros = loadMacros()
+
+        for macro in macros:
+            addButton(self, macro)
+
+# start program       
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = macroGUI(root)
+    app.pack(fill='both', expand=True)
+    root.mainloop()
